@@ -14,6 +14,8 @@ def replace_matching_line(file_path, is_match_lambda, replacement_str):
       new_file_contents += replacement_str
     else:
       new_file_contents += line
+  with open(file_path, 'w') as fd:
+    fd.write(new_file_contents)
 
 
 def main():
