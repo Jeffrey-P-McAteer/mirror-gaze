@@ -74,7 +74,6 @@ void ReplGemma(gcpp::Gemma& model, ModelTraining training,
                gcpp::KVCache& kv_cache, hwy::ThreadPool& pool,
                const InferenceArgs& args, int verbosity,
                const gcpp::AcceptFunc& accept_token, std::string& eot_line) {
-  PROFILER_ZONE("Gen.misc");
   size_t abs_pos = 0;      // absolute token index over all turns
   int current_pos = 0;  // token index within the current turn
   int prompt_size{};
@@ -127,7 +126,6 @@ void ReplGemma(gcpp::Gemma& model, ModelTraining training,
     std::vector<int> prompt;
     current_pos = 0;
     {
-      PROFILER_ZONE("Gen.input");
       if (verbosity >= 1) {
         std::cout << "> " << std::flush;
       }
