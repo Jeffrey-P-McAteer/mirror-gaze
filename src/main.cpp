@@ -33,7 +33,10 @@
 std::queue<std::string> llm_input_queue;
 // Returns word-by-word generated decoded tokens, and None when generation completes.
 std::queue<std::optional<std::string>> llm_output_tokens_queue;
-
+// These are updated periodically and ought be used to read the current terminal dimensions
+int term_w = 120;
+int term_h = 40;
+bool exit_requested = false;
 
 namespace gcpp {
 
@@ -167,6 +170,7 @@ void ReplGemma(gcpp::Gemma& model, ModelTraining training,
     }*/
 
     if (prompt_string == "%q" || prompt_string == "%Q") {
+      exit_requested = true;
       return;
     }
 
@@ -282,6 +286,29 @@ void Run(LoaderArgs& loader, InferenceArgs& inference, AppArgs& app) {
 
 } // namespace gcpp
 
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#define VC_EXTRALEAN
+#include <Windows.h>
+#elif defined(__linux__)
+#include <sys/ioctl.h>
+#endif // Windows/Linux
+
+void get_terminal_size(int& width, int& height) {
+#if defined(_WIN32)
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+    width = (int)(csbi.srWindow.Right-csbi.srWindow.Left+1);
+    height = (int)(csbi.srWindow.Bottom-csbi.srWindow.Top+1);
+#elif defined(__linux__)
+    struct winsize w;
+    ioctl(fileno(stdout), TIOCGWINSZ, &w);
+    width = (int)(w.ws_col);
+    height = (int)(w.ws_row);
+#endif // Windows/Linux
+}
+
+
 std::string get_username_from_env() {
   if (const char* env_var = std::getenv("username")) { // Windows
     return std::string(env_var);
@@ -340,9 +367,18 @@ void run_llm_thread(int argc, char** argv) {
   gcpp::Run(loader, inference, app);
 }
 
+
+void update_term_size_globals_thread() {
+  while (!exit_requested) {
+    get_terminal_size(term_w, term_h);
+    std::this_thread::sleep_for(std::chrono::milliseconds(750));
+  }
+}
+
 std::string prompt_and_return_value(std::string prompt_txt, bool print_tokens_to_screen) {
   std::stringstream ss;
   llm_input_queue.push(prompt_txt);
+  int active_line_chars_printed = 0;
   while (true) {
     while (llm_output_tokens_queue.size() < 1) {
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -354,7 +390,12 @@ std::string prompt_and_return_value(std::string prompt_txt, bool print_tokens_to
       auto val = token.value();
       ss << val;
       if (print_tokens_to_screen) {
+        if (active_line_chars_printed + val.size() >= term_w) {
+          std::cout << std::endl << std::flush;
+          active_line_chars_printed = 0;
+        }
         std::cout << val << std::flush;
+        active_line_chars_printed += val.size();
       }
     }
     else {
@@ -398,6 +439,7 @@ int main(int argc, char** argv) {
   }
 
   std::thread llm_t(run_llm_thread, args.size(), args.data());
+  std::thread term_size_update_t(update_term_size_globals_thread);
 
   auto username = get_username_from_env();
 
@@ -405,31 +447,14 @@ int main(int argc, char** argv) {
     "My name is "+username+". Introduce yourself as a therapist interested in learning about my life's struggles"
   );
 
-  // llm_input_queue.push(
-  //   "My name is "+username+". Introduce yourself as a therapist interested in learning about my life's struggles"
-  // );
-  // while (true) {
-  //   while (llm_output_tokens_queue.size() < 1) {
-  //     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  //   }
-  //   // We know llm_output_tokens_queue.size() > 0 now
-  //   auto token = llm_output_tokens_queue.front();
-  //   llm_output_tokens_queue.pop();
-  //   if (token.has_value()) {
-  //     std::cout << token.value() << std::flush;
-  //   }
-  //   else {
-  //     std::cout << std::endl << std::endl;
-  //     break; // end of token generation!
-  //   }
-  // }
 
-
+  exit_requested = true;
   llm_input_queue.push(
     "%q" // quit token
   );
 
   llm_t.join();
+  term_size_update_t.join();
 
   return 0;
 }
