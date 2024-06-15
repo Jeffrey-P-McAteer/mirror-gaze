@@ -34,11 +34,21 @@ def main():
 
   mirror_gaze_main_cpp = os.path.abspath(os.path.join('src', 'main.cpp'))
 
+  # Add our main.cpp to the build system
   gemma_CMakeLists_txt = os.path.join(gemma_repo_root, 'CMakeLists.txt')
   replace_matching_line(
     gemma_CMakeLists_txt,
     lambda line: 'add_executable' in line and 'gemma/run.cc' in line,
     f'add_executable(gemma {mirror_gaze_main_cpp})\n'
+  )
+
+  # update GEMMA_MAX_SEQLEN to be huge
+  gemma_configs_h = os.path.join(gemma_repo_root, 'gemma', 'configs.h')
+  wanted_seq_len = '16384'
+  replace_matching_line(
+    gemma_configs_h,
+    lambda line: '#define' in line and 'GEMMA_MAX_SEQLEN' in line and not (wanted_seq_len in line),
+    f'#define GEMMA_MAX_SEQLEN {wanted_seq_len}\n'
   )
 
   # Now run the build

@@ -356,15 +356,20 @@ void run_llm_thread(int argc, char** argv) {
 
   if (gcpp::HasHelp(argc, argv)) {
     ShowHelp(loader, inference, app);
+    std::exit(0);
     return;
   }
 
   if (const char* error = loader.Validate()) {
     ShowHelp(loader, inference, app);
     HWY_ABORT("\nInvalid args: %s", error);
+    std::exit(0);
   }
 
   gcpp::Run(loader, inference, app);
+
+  std::cout << "After gcpp::Run" << std::endl;
+  //exit_requested = true;
 }
 
 
@@ -379,7 +384,12 @@ std::string prompt_and_return_value(std::string prompt_txt, bool print_tokens_to
   std::stringstream ss;
   llm_input_queue.push(prompt_txt);
   int active_line_chars_printed = 0;
-  while (true) {
+
+  bool seen_first_token = false;
+  bool first_token_had_quote = false;
+  int last_printed_token_quote_neg_offset = -1;
+
+  while (!exit_requested) {
     while (llm_output_tokens_queue.size() < 1) {
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
@@ -388,7 +398,30 @@ std::string prompt_and_return_value(std::string prompt_txt, bool print_tokens_to
     llm_output_tokens_queue.pop();
     if (token.has_value()) {
       auto val = token.value();
+
+      if (!seen_first_token) {
+        // Trim any leading " chars
+        if (val.size() > 0 && val[0] == '"') {
+          val.erase(0, 1); // in-place mod of val
+          first_token_had_quote = true;
+        }
+        seen_first_token = true;
+      }
+      else if (first_token_had_quote) {
+        // We don't 100% know this is the last one
+        if (val.size() > 0 && val[val.size()-1] == '"') {
+          last_printed_token_quote_neg_offset = 1;
+        }
+        else if (val.size() > 1 && val[val.size()-2] == '"') {
+          last_printed_token_quote_neg_offset = 2;
+        }
+        else {
+          last_printed_token_quote_neg_offset = -1; // no quote at end
+        }
+      }
+
       ss << val;
+
       if (print_tokens_to_screen) {
         if (active_line_chars_printed + val.size() >= term_w) {
           std::cout << std::endl << std::flush;
@@ -397,9 +430,23 @@ std::string prompt_and_return_value(std::string prompt_txt, bool print_tokens_to
         std::cout << val << std::flush;
         active_line_chars_printed += val.size();
       }
+
     }
     else {
-      std::cout << std::endl << std::endl;
+      if (print_tokens_to_screen) {
+        if (last_printed_token_quote_neg_offset >= 0) {
+          // Erase the last 1/2 chars and print spaces before new line
+          for (int i=0; i<last_printed_token_quote_neg_offset; i+=1) {
+            std::cout << "\b";
+          }
+          std::cout << std::flush;
+          for (int i=0; i<last_printed_token_quote_neg_offset; i+=1) {
+            std::cout << " ";
+          }
+          std::cout << std::flush;
+        }
+        std::cout << std::endl << std::endl;
+      }
       ss << std::endl;
       break; // end of token generation!
     }
@@ -438,20 +485,43 @@ int main(int argc, char** argv) {
     args.push_back((char*) model_name );
   }
 
+  // Hard-coded b/c build.py ensures these numbers are available in our modified copy of the llm
+  // max_tokens is everything in-memory, both prompt tokens plus max generated tokens
+  args.push_back((char*)"--max_tokens");
+  args.push_back((char*)"16382");
+
+  // TODO worth tuning / making a per-prompt parameter?
+  // This gives us 12k tokens for prompt and 4096 for responses (original ~1024 for responses)
+  args.push_back((char*)"--max_generated_tokens");
+  args.push_back((char*)"4096");
+
+  // Default is 0, but 1 means the LLM will keep state data between prompts.
+  args.push_back((char*)"--multiturn");
+  args.push_back((char*)"1");
+
+  // Temperature: Controls randomness, higher values increase diversity.
+  //args.push_back((char*)"--temperature");
+  //args.push_back((char*)"1");
+
+
   std::thread llm_t(run_llm_thread, args.size(), args.data());
   std::thread term_size_update_t(update_term_size_globals_thread);
 
   auto username = get_username_from_env();
 
   auto resp = prompt_and_return_value_interactive(
-    "My name is "+username+". Introduce yourself as a therapist interested in learning about my life's struggles"
+    "My name is "+username+". Your name is Mirror. Introduce yourself as a therapist interested in learning about my life's struggles"
   );
+
+  std::cerr << "resp = " << resp << std::endl;
 
 
   exit_requested = true;
   llm_input_queue.push(
     "%q" // quit token
   );
+
+  std::cout << "Goodbye!" << std::endl;
 
   llm_t.join();
   term_size_update_t.join();
