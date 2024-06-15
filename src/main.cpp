@@ -494,6 +494,16 @@ bool str_ends_in(std::string& s, char c) {
   return false;
 }
 
+
+bool str_contains(std::string& s, char c) {
+  for (int i=0; i < s.size(); i+=1) {
+    if (s[i] == c) {
+      return true;
+    }
+  }
+  return false;
+}
+
 int main(int argc, char** argv) {
 
   // We parse our own (more opinionated for task-at-hand) args
@@ -551,7 +561,7 @@ int main(int argc, char** argv) {
   );
 
   // Continue for as long as our llm-agent is asking the user questions.
-  while (str_ends_in(llm_resp, '?')) {
+  while (str_contains(llm_resp, '?')) {
     user_problem_description = prompt_user();
     llm_resp = prompt_llm_and_return_value_interactive(
       user_problem_description
