@@ -569,7 +569,7 @@ int main(int argc, char** argv) {
   }
 
   llm_resp = prompt_llm_and_return_value_interactive(
-    "Tell "+username+" what the best thing to do is. Make sure they are called to take action that fixes their problem."
+    "Tell "+username+" the best thing to do. Make sure they are called to take action that fixes their problem."
   );
 
   llm_resp = prompt_llm_and_return_value_interactive(
