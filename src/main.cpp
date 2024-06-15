@@ -473,8 +473,10 @@ std::string prompt_llm_and_return_value_interactive(std::string prompt_txt) {
 
 std::string prompt_user(std::string prompt_txt) {
   std::string user_resp;
-  std::cout << prompt_txt << std::flush;
-  std::getline(std::cin, user_resp);
+  while (user_resp.size() < 1) {
+    std::cout << prompt_txt << std::flush;
+    std::getline(std::cin, user_resp);
+  }
   return user_resp;
 }
 
@@ -508,12 +510,12 @@ int main(int argc, char** argv) {
   // Hard-coded b/c build.py ensures these numbers are available in our modified copy of the llm
   // max_tokens is everything in-memory, both prompt tokens plus max generated tokens
   args.push_back((char*)"--max_tokens");
-  args.push_back((char*)"16382");
+  args.push_back((char*)"32768");
 
   // TODO worth tuning / making a per-prompt parameter?
   // This gives us 12k tokens for prompt and 4096 for responses (original ~1024 for responses)
   args.push_back((char*)"--max_generated_tokens");
-  args.push_back((char*)"4096");
+  args.push_back((char*)"12288");
 
   // Default is 0, but 1 means the LLM will keep state data between prompts.
   args.push_back((char*)"--multiturn");

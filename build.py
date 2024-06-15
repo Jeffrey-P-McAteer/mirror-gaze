@@ -44,7 +44,7 @@ def main():
 
   # update GEMMA_MAX_SEQLEN to be huge
   gemma_configs_h = os.path.join(gemma_repo_root, 'gemma', 'configs.h')
-  wanted_seq_len = '16384'
+  wanted_seq_len = '32768'
   replace_matching_line(
     gemma_configs_h,
     lambda line: '#define' in line and 'GEMMA_MAX_SEQLEN' in line and not (wanted_seq_len in line),
