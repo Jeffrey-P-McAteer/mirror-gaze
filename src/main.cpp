@@ -369,8 +369,7 @@ void run_llm_thread(int argc, char** argv) {
 
   gcpp::Run(loader, inference, app);
 
-  std::cout << "After gcpp::Run" << std::endl;
-  //exit_requested = true;
+  exit_requested = true;
 }
 
 
