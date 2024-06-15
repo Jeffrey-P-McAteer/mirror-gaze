@@ -83,11 +83,13 @@ def main():
 
   possible_model_file_locations = [
     '/mnt/scratch/llm-models/google-gemma/7b-it-sfp/7b-it-sfp.sbs',
+    '/llm-models/google-gemma/7b-it-sfp/7b-it-sfp.sbs',
     os.environ.get('GEMMA_MODEL_SBS_FILE', '')
   ]
 
   possible_tokenizer_file_locations = [
     '/mnt/scratch/llm-models/google-gemma/7b-it-sfp/tokenizer.spm',
+    '/llm-models/google-gemma/7b-it-sfp/tokenizer.spm',
     os.environ.get('GEMMA_TOKENIZER_SPM_FILE', '')
   ]
 
