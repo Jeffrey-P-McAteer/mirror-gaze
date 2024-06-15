@@ -380,7 +380,7 @@ void update_term_size_globals_thread() {
   }
 }
 
-std::string prompt_and_return_value(std::string prompt_txt, bool print_tokens_to_screen) {
+std::string prompt_llm_and_return_value(std::string prompt_txt, bool print_tokens_to_screen) {
   std::stringstream ss;
   llm_input_queue.push(prompt_txt);
   int active_line_chars_printed = 0;
@@ -438,10 +438,12 @@ std::string prompt_and_return_value(std::string prompt_txt, bool print_tokens_to
           // Erase the last 1/2 chars and print spaces before new line
           for (int i=0; i<last_printed_token_quote_neg_offset; i+=1) {
             std::cout << "\b";
+            ss.seekp(-1,ss.cur);
           }
           std::cout << std::flush;
           for (int i=0; i<last_printed_token_quote_neg_offset; i+=1) {
             std::cout << " ";
+            ss << " ";
           }
           std::cout << std::flush;
         }
@@ -454,12 +456,23 @@ std::string prompt_and_return_value(std::string prompt_txt, bool print_tokens_to
   return ss.str();
 }
 
-std::string prompt_and_return_value_silent(std::string prompt_txt) {
-  return prompt_and_return_value(prompt_txt, false);
+std::string prompt_llm_and_return_value_silent(std::string prompt_txt) {
+  return prompt_llm_and_return_value(prompt_txt, false);
 }
 
-std::string prompt_and_return_value_interactive(std::string prompt_txt) {
-  return prompt_and_return_value(prompt_txt, true);
+std::string prompt_llm_and_return_value_interactive(std::string prompt_txt) {
+  return prompt_llm_and_return_value(prompt_txt, true);
+}
+
+std::string prompt_user(std::string prompt_txt) {
+  std::string user_resp;
+  std::cout << prompt_txt << std::flush;
+  std::getline(std::cin, user_resp);
+  return user_resp;
+}
+
+std::string prompt_user() {
+  return prompt_user("> ");
 }
 
 
@@ -508,13 +521,20 @@ int main(int argc, char** argv) {
   std::thread term_size_update_t(update_term_size_globals_thread);
 
   auto username = get_username_from_env();
+  std::string llm_resp;
 
-  auto resp = prompt_and_return_value_interactive(
-    "My name is "+username+". Your name is Mirror. Introduce yourself as a therapist interested in learning about my life's struggles"
+  llm_resp = prompt_llm_and_return_value_interactive(
+    "My name is "+username+". Your name is Mirror. Introduce yourself as a therapist interested in learning about my life's struggles."
   );
 
-  std::cerr << "resp = " << resp << std::endl;
+  std::string user_problem_description = prompt_user();
+  llm_resp = prompt_llm_and_return_value_interactive(
+    user_problem_description
+  );
 
+  llm_resp = prompt_llm_and_return_value_interactive(
+    "Say goodbye to "+username+" and offer assistance and guidance with their problem."
+  );
 
   exit_requested = true;
   llm_input_queue.push(
