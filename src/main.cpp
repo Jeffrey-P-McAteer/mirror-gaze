@@ -8,6 +8,7 @@
 #include <string_view>
 #include <thread>  // NOLINT
 #include <vector>
+#include <filesystem>
 
 // Placeholder for internal header, do not modify.
 #include "compression/compress.h"
@@ -261,14 +262,34 @@ void Run(LoaderArgs& loader, InferenceArgs& inference, AppArgs& app) {
 
 int main(int argc, char** argv) {
 
-  gcpp::LoaderArgs loader(argc, argv);
-  gcpp::InferenceArgs inference(argc, argv);
-  gcpp::AppArgs app(argc, argv);
+  // We parse our own (more opinionated for task-at-hand) args
+  // and construct gemini args for model selection.
+  std::vector<char*> args;
+  if (argc > 0) {
+    args.push_back(argv[0]);
+  }
+  if (const char* gemma_model_sbs_file = std::getenv("GEMMA_MODEL_SBS_FILE")) {
+    args.push_back((char*)"--weights");
+    args.push_back((char*)gemma_model_sbs_file);
+    // Infer model type from file name
+    auto file_name = std::filesystem::path(gemma_model_sbs_file).filename().string();
+    std::string model_name = file_name.substr(0, file_name.size() - 4);
+    args.push_back((char*)"--model");
+    args.push_back((char*) model_name.c_str() );
+  }
+  if (const char* gemma_tokenizer_spm_file = std::getenv("GEMMA_TOKENIZER_SPM_FILE")) {
+    args.push_back((char*)"--tokenizer");
+    args.push_back((char*)gemma_tokenizer_spm_file);
+  }
 
-  if (gcpp::HasHelp(argc, argv)) {
+  gcpp::LoaderArgs loader(args.size(), args.data());
+  gcpp::InferenceArgs inference(args.size(), args.data());
+  gcpp::AppArgs app(args.size(), args.data());
+
+  /*if (gcpp::HasHelp(args.size(), args.data())) {
     ShowHelp(loader, inference, app);
     return 0;
-  }
+  }*/
 
   if (const char* error = loader.Validate()) {
     ShowHelp(loader, inference, app);
