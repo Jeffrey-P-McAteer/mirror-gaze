@@ -100,9 +100,13 @@ def main():
       sys.exit(1)
     print(f'Using tokenizer file {tokenizer_file}')
 
+    subproc_env = dict(os.environ)
+    subproc_env['GEMMA_MODEL_SBS_FILE'] = model_file;
+    subproc_env['GEMMA_TOKENIZER_SPM_FILE'] = tokenizer_file;
+
     subprocess.run([
       mirror_gaze_exe
-    ])
+    ], env=subproc_env)
 
 
 

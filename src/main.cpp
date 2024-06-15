@@ -260,7 +260,7 @@ void Run(LoaderArgs& loader, InferenceArgs& inference, AppArgs& app) {
 
 } // namespace gcpp
 
-std::string model_from_file_name(std::string& file_name) {
+const char* model_from_file_name(std::string& file_name) {
   if (file_name.find("2b-it") != std::string::npos) {
     return "2b-it";
   }
@@ -291,18 +291,28 @@ int main(int argc, char** argv) {
   if (argc > 0) {
     args.push_back(argv[0]);
   }
+  if (const char* gemma_tokenizer_spm_file = std::getenv("GEMMA_TOKENIZER_SPM_FILE")) {
+    args.push_back((char*)"--tokenizer");
+    args.push_back((char*)gemma_tokenizer_spm_file);
+  }
   if (const char* gemma_model_sbs_file = std::getenv("GEMMA_MODEL_SBS_FILE")) {
     args.push_back((char*)"--weights");
     args.push_back((char*)gemma_model_sbs_file);
     // Infer model type from file name
     auto file_name = std::filesystem::path(gemma_model_sbs_file).filename().string();
     args.push_back((char*)"--model");
-    args.push_back((char*) model_from_file_name(file_name).c_str() );
+    auto model_name = model_from_file_name(file_name);
+    args.push_back((char*) model_name );
   }
-  if (const char* gemma_tokenizer_spm_file = std::getenv("GEMMA_TOKENIZER_SPM_FILE")) {
-    args.push_back((char*)"--tokenizer");
-    args.push_back((char*)gemma_tokenizer_spm_file);
+
+  args.push_back((char*) "--verbosity");
+  args.push_back((char*) "2");
+
+  std::cout << args.size() << " Args: ";
+  for (auto a : args) {
+    std::cout << a << " ";
   }
+  std::cout << std::endl;
 
   gcpp::LoaderArgs loader(args.size(), args.data());
   gcpp::InferenceArgs inference(args.size(), args.data());
