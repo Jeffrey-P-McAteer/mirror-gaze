@@ -9,6 +9,10 @@
 #include <thread>  // NOLINT
 #include <vector>
 #include <filesystem>
+#include <queue>
+#include <optional>
+#include <chrono>
+#include <sstream>
 
 // Placeholder for internal header, do not modify.
 #include "compression/compress.h"
@@ -22,9 +26,16 @@
 #include "hwy/profiler.h"
 #include "hwy/timer.h"
 
+// These are global state variables used to move between the logical control system
+// and the LLM-based response-generation system.
+//
+// Recieves entire prompts
+std::queue<std::string> llm_input_queue;
+// Returns word-by-word generated decoded tokens, and None when generation completes.
+std::queue<std::optional<std::string>> llm_output_tokens_queue;
+
 
 namespace gcpp {
-
 
 void ShowHelp(gcpp::LoaderArgs& loader, gcpp::InferenceArgs& inference,
               gcpp::AppArgs& app) {
@@ -95,7 +106,7 @@ void ReplGemma(gcpp::Gemma& model, ModelTraining training,
     ++current_pos;
     // <= since position is incremented before
     if (current_pos <= prompt_size) {
-      std::cerr << "." << std::flush;
+      //std::cerr << "." << std::flush;
     } else if (token == gcpp::EOS_ID) {
       if (!args.multiturn) {
         abs_pos = 0;
@@ -103,9 +114,10 @@ void ReplGemma(gcpp::Gemma& model, ModelTraining training,
           gen.seed(42);
         }
       }
-      if (verbosity >= 2) {
+      /*if (verbosity >= 2) {
         std::cout << "\n[ End ]\n";
-      }
+      }*/
+      llm_output_tokens_queue.push(std::nullopt);
     } else {
       std::string token_text;
       HWY_ASSERT(tokenizer->Decode(std::vector<int>{token}, &token_text));
@@ -113,20 +125,30 @@ void ReplGemma(gcpp::Gemma& model, ModelTraining training,
       if (current_pos == prompt_size + 1) {
         // first token of response
         token_text.erase(0, token_text.find_first_not_of(" \t\n"));
-        if (verbosity >= 1) {
+        /*if (verbosity >= 1) {
           std::cout << "\n\n";
-        }
+        }*/
       }
-      std::cout << token_text << std::flush;
+      //std::cout << token_text << std::flush;
+      llm_output_tokens_queue.push(token_text);
     }
     return true;
   };
 
   while (abs_pos < args.max_tokens) {
     std::string prompt_string;
+    // Poll/Read from queue
+    while (llm_input_queue.size() < 1) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    // We know llm_input_queue.size() > 0 now
+    prompt_string = llm_input_queue.front();
+    llm_input_queue.pop();
+
     std::vector<int> prompt;
     current_pos = 0;
-    {
+
+    /*{
       if (verbosity >= 1) {
         std::cout << "> " << std::flush;
       }
@@ -142,9 +164,9 @@ void ReplGemma(gcpp::Gemma& model, ModelTraining training,
           prompt_string += line + "\n";
         }
       }
-    }
+    }*/
 
-    if (std::cin.fail() || prompt_string == "%q" || prompt_string == "%Q") {
+    if (prompt_string == "%q" || prompt_string == "%Q") {
       return;
     }
 
@@ -174,8 +196,8 @@ void ReplGemma(gcpp::Gemma& model, ModelTraining training,
 
     prompt_size = prompt.size();
 
-    std::cerr << "\n"
-              << "[ Reading prompt ] " << std::flush;
+    /*std::cerr << "\n"
+              << "[ Reading prompt ] " << std::flush;*/
 
     /*if constexpr (kVerboseLogTokens) {
       for (int i = 0; i < static_cast<int>(prompt.size()); ++i) {
@@ -204,7 +226,7 @@ void ReplGemma(gcpp::Gemma& model, ModelTraining training,
                 << static_cast<int>(timing_info.time_to_first_token * 1000)
                 << " milliseconds time to first token" << "\n";
     }
-    std::cout << "\n\n";
+    //std::cout << "\n\n";
   }
   std::cout
       << "max_tokens (" << args.max_tokens
@@ -230,7 +252,7 @@ void Run(LoaderArgs& loader, InferenceArgs& inference, AppArgs& app) {
     ShowHelp(loader, inference, app);
     HWY_ABORT("\nInvalid args: %s", error);
   }
-
+  /*
   if (app.verbosity >= 1) {
     const std::string instructions =
         "*Usage*\n"
@@ -251,7 +273,7 @@ void Run(LoaderArgs& loader, InferenceArgs& inference, AppArgs& app) {
               << "\n\n";
     ShowConfig(loader, inference, app);
     std::cout << "\n" << instructions << "\n";
-  }
+  }*/
 
   ReplGemma(
       model, loader.ModelTraining(), kv_cache, pool, inference, app.verbosity,
@@ -259,6 +281,23 @@ void Run(LoaderArgs& loader, InferenceArgs& inference, AppArgs& app) {
 }
 
 } // namespace gcpp
+
+std::string get_username_from_env() {
+  if (const char* env_var = std::getenv("username")) { // Windows
+    return std::string(env_var);
+  }
+  if (const char* env_var = std::getenv("USERNAME")) {
+    return std::string(env_var);
+  }
+  if (const char* env_var = std::getenv("USER")) { // Most unixes
+    return std::string(env_var);
+  }
+  if (const char* env_var = std::getenv("user")) {
+    return std::string(env_var);
+  }
+  return std::string("Unknown");
+}
+
 
 const char* model_from_file_name(std::string& file_name) {
   if (file_name.find("2b-it") != std::string::npos) {
@@ -280,6 +319,59 @@ const char* model_from_file_name(std::string& file_name) {
     return "gr2b-pt";
   }
   return "";
+}
+
+
+void run_llm_thread(int argc, char** argv) {
+  gcpp::LoaderArgs loader(argc, argv);
+  gcpp::InferenceArgs inference(argc, argv);
+  gcpp::AppArgs app(argc, argv);
+
+  if (gcpp::HasHelp(argc, argv)) {
+    ShowHelp(loader, inference, app);
+    return;
+  }
+
+  if (const char* error = loader.Validate()) {
+    ShowHelp(loader, inference, app);
+    HWY_ABORT("\nInvalid args: %s", error);
+  }
+
+  gcpp::Run(loader, inference, app);
+}
+
+std::string prompt_and_return_value(std::string prompt_txt, bool print_tokens_to_screen) {
+  std::stringstream ss;
+  llm_input_queue.push(prompt_txt);
+  while (true) {
+    while (llm_output_tokens_queue.size() < 1) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    // We know llm_output_tokens_queue.size() > 0 now
+    auto token = llm_output_tokens_queue.front();
+    llm_output_tokens_queue.pop();
+    if (token.has_value()) {
+      auto val = token.value();
+      ss << val;
+      if (print_tokens_to_screen) {
+        std::cout << val << std::flush;
+      }
+    }
+    else {
+      std::cout << std::endl << std::endl;
+      ss << std::endl;
+      break; // end of token generation!
+    }
+  }
+  return ss.str();
+}
+
+std::string prompt_and_return_value_silent(std::string prompt_txt) {
+  return prompt_and_return_value(prompt_txt, false);
+}
+
+std::string prompt_and_return_value_interactive(std::string prompt_txt) {
+  return prompt_and_return_value(prompt_txt, true);
 }
 
 
@@ -305,33 +397,39 @@ int main(int argc, char** argv) {
     args.push_back((char*) model_name );
   }
 
-  args.push_back((char*) "--verbosity");
-  args.push_back((char*) "2");
+  std::thread llm_t(run_llm_thread, args.size(), args.data());
 
-  std::cout << args.size() << " Args: ";
-  for (auto a : args) {
-    std::cout << a << " ";
-  }
-  std::cout << std::endl;
+  auto username = get_username_from_env();
 
-  gcpp::LoaderArgs loader(args.size(), args.data());
-  gcpp::InferenceArgs inference(args.size(), args.data());
-  gcpp::AppArgs app(args.size(), args.data());
+  auto resp = prompt_and_return_value_interactive(
+    "My name is "+username+". Introduce yourself as a therapist interested in learning about my life's struggles"
+  );
 
-  /*if (gcpp::HasHelp(args.size(), args.data())) {
-    ShowHelp(loader, inference, app);
-    return 0;
-  }*/
+  // llm_input_queue.push(
+  //   "My name is "+username+". Introduce yourself as a therapist interested in learning about my life's struggles"
+  // );
+  // while (true) {
+  //   while (llm_output_tokens_queue.size() < 1) {
+  //     std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  //   }
+  //   // We know llm_output_tokens_queue.size() > 0 now
+  //   auto token = llm_output_tokens_queue.front();
+  //   llm_output_tokens_queue.pop();
+  //   if (token.has_value()) {
+  //     std::cout << token.value() << std::flush;
+  //   }
+  //   else {
+  //     std::cout << std::endl << std::endl;
+  //     break; // end of token generation!
+  //   }
+  // }
 
-  if (const char* error = loader.Validate()) {
-    ShowHelp(loader, inference, app);
-    HWY_ABORT("\nInvalid args: %s", error);
-  }
 
-  gcpp::Run(loader, inference, app);
+  llm_input_queue.push(
+    "%q" // quit token
+  );
 
-  std::cout << "Hello World!" << std::endl;
-
+  llm_t.join();
 
   return 0;
 }

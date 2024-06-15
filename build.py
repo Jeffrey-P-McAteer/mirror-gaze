@@ -99,6 +99,7 @@ def main():
       print('Ensure the tokenizer matches the model file!')
       sys.exit(1)
     print(f'Using tokenizer file {tokenizer_file}')
+    print('= = = = = = = = = = = = = = = = = = = = = = = = = = =')
 
     subproc_env = dict(os.environ)
     subproc_env['GEMMA_MODEL_SBS_FILE'] = model_file;
