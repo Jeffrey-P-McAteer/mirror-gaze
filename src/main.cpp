@@ -260,6 +260,29 @@ void Run(LoaderArgs& loader, InferenceArgs& inference, AppArgs& app) {
 
 } // namespace gcpp
 
+std::string model_from_file_name(std::string& file_name) {
+  if (file_name.find("2b-it") != std::string::npos) {
+    return "2b-it";
+  }
+  else if (file_name.find("2b-pt") != std::string::npos) {
+    return "2b-pt";
+  }
+  else if (file_name.find("7b-it") != std::string::npos) {
+    return "7b-it";
+  }
+  else if (file_name.find("7b-pt") != std::string::npos) {
+    return "7b-pt";
+  }
+  else if (file_name.find("gr2b-it") != std::string::npos) {
+    return "gr2b-it";
+  }
+  else if (file_name.find("gr2b-pt") != std::string::npos) {
+    return "gr2b-pt";
+  }
+  return "";
+}
+
+
 int main(int argc, char** argv) {
 
   // We parse our own (more opinionated for task-at-hand) args
@@ -273,9 +296,8 @@ int main(int argc, char** argv) {
     args.push_back((char*)gemma_model_sbs_file);
     // Infer model type from file name
     auto file_name = std::filesystem::path(gemma_model_sbs_file).filename().string();
-    std::string model_name = file_name.substr(0, file_name.size() - 4);
     args.push_back((char*)"--model");
-    args.push_back((char*) model_name.c_str() );
+    args.push_back((char*) model_from_file_name(file_name).c_str() );
   }
   if (const char* gemma_tokenizer_spm_file = std::getenv("GEMMA_TOKENIZER_SPM_FILE")) {
     args.push_back((char*)"--tokenizer");
