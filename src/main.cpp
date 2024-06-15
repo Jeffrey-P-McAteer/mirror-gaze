@@ -478,6 +478,7 @@ std::string prompt_user(std::string prompt_txt) {
     std::cout << prompt_txt << std::flush;
     std::getline(std::cin, user_resp);
   }
+  std::cout << std::endl;
   return user_resp;
 }
 
