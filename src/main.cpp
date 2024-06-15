@@ -388,6 +388,7 @@ std::string prompt_llm_and_return_value(std::string prompt_txt, bool print_token
   bool seen_first_token = false;
   bool first_token_had_quote = false;
   int last_printed_token_quote_neg_offset = -1;
+  bool trim_leading_space_from_next_token = false;
 
   while (!exit_requested) {
     while (llm_output_tokens_queue.size() < 1) {
@@ -426,6 +427,12 @@ std::string prompt_llm_and_return_value(std::string prompt_txt, bool print_token
         if (active_line_chars_printed + val.size() >= term_w) {
           std::cout << std::endl << std::flush;
           active_line_chars_printed = 0;
+          trim_leading_space_from_next_token = true;
+        }
+        if (trim_leading_space_from_next_token) {
+          while (val.size() > 0 && val[0] == ' ') {
+            val.erase(0, 1); // in-place mod of val
+          }
         }
         std::cout << val << std::flush;
         active_line_chars_printed += val.size();
