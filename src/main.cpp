@@ -13,6 +13,7 @@
 #include <optional>
 #include <chrono>
 #include <sstream>
+#include <algorithm>
 
 // Placeholder for internal header, do not modify.
 #include "compression/compress.h"
@@ -433,6 +434,7 @@ std::string prompt_llm_and_return_value(std::string prompt_txt, bool print_token
           while (val.size() > 0 && val[0] == ' ') {
             val.erase(0, 1); // in-place mod of val
           }
+          trim_leading_space_from_next_token = false;
         }
         std::cout << val << std::flush;
         active_line_chars_printed += val.size();
@@ -484,6 +486,14 @@ std::string prompt_user() {
   return prompt_user("> ");
 }
 
+bool str_ends_in(std::string& s, char c) {
+  for (int i=std::max(0, (int) (s.size() - 4) ); i < s.size(); i+=1) {
+    if (s[i] == c) {
+      return true;
+    }
+  }
+  return false;
+}
 
 int main(int argc, char** argv) {
 
@@ -541,12 +551,20 @@ int main(int argc, char** argv) {
     user_problem_description
   );
 
+  // Continue for as long as our llm-agent is asking the user questions.
+  while (str_ends_in(llm_resp, '?')) {
+    user_problem_description = prompt_user();
+    llm_resp = prompt_llm_and_return_value_interactive(
+      user_problem_description
+    );
+  }
+
   llm_resp = prompt_llm_and_return_value_interactive(
     "Tell "+username+" what the best thing to do is. Make sure they are called to take action that fixes their problem."
   );
 
   llm_resp = prompt_llm_and_return_value_interactive(
-    "Say goodbye to "+username+" and offer assistance and guidance with their problem."
+    "Energetically say goodbye to "+username+" and wish them success!"
   );
 
   exit_requested = true;
