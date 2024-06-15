@@ -96,6 +96,7 @@ void ReplGemma(gcpp::Gemma& model, ModelTraining training,
 
   std::mt19937 gen;
   if (args.deterministic) {
+    std::cout << "args.deterministic == true!" << std::endl;
     gen.seed(42);
   } else {
     std::random_device rd;
@@ -115,6 +116,7 @@ void ReplGemma(gcpp::Gemma& model, ModelTraining training,
       if (!args.multiturn) {
         abs_pos = 0;
         if (args.deterministic) {
+          std::cout << "args.deterministic == true!" << std::endl;
           gen.seed(42);
         }
       }
@@ -542,8 +544,8 @@ int main(int argc, char** argv) {
   args.push_back((char*)"1");
 
   // Temperature: Controls randomness, higher values increase diversity.
-  //args.push_back((char*)"--temperature");
-  //args.push_back((char*)"1");
+  args.push_back((char*)"--temperature");
+  args.push_back((char*)"2");
 
 
   std::thread llm_t(run_llm_thread, args.size(), args.data());
