@@ -64,7 +64,7 @@ def main():
   if shutil.which('make') is None:
     # Windows-ism
     subprocess.run([
-      'nmake', '-j4',
+      'nmake',
     ], cwd=os.path.join(gemma_repo_root, 'build'), check=True)
   else:
     subprocess.run([
