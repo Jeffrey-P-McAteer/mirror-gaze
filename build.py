@@ -61,9 +61,15 @@ def main():
   # ^^ on error windows just run in cmd.exe:
   #       "C:\Program Files\Microsoft Visual Studio\2022\VC\Auxiliary\Build\vcvarsall.bat" x64
 
-  subprocess.run([
-    'make', '-j4',
-  ], cwd=os.path.join(gemma_repo_root, 'build'), check=True)
+  if shutil.which('make') is None:
+    # Windows-ism
+    subprocess.run([
+      'nmake', '-j4',
+    ], cwd=os.path.join(gemma_repo_root, 'build'), check=True)
+  else:
+    subprocess.run([
+      'make', '-j4',
+    ], cwd=os.path.join(gemma_repo_root, 'build'), check=True)
 
 
   build_dir = os.path.join(
