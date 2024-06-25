@@ -33,6 +33,9 @@ def main():
     ], cwd='build_3rdparty', check=True)
 
   mirror_gaze_main_cpp = os.path.abspath(os.path.join('src', 'main.cpp'))
+  if '\\' in mirror_gaze_main_cpp:
+    # reverse for cmake string, mostly a windows-only thing
+    mirror_gaze_main_cpp = mirror_gaze_main_cpp.replace('\\', '/')
 
   # Add our main.cpp to the build system
   gemma_CMakeLists_txt = os.path.join(gemma_repo_root, 'CMakeLists.txt')
@@ -55,6 +58,8 @@ def main():
   subprocess.run([
     'cmake', '-B', 'build',
   ], cwd=gemma_repo_root, check=True)
+  # ^^ on error windows just run in cmd.exe:
+  #       "C:\Program Files\Microsoft Visual Studio\2022\VC\Auxiliary\Build\vcvarsall.bat" x64
 
   subprocess.run([
     'make', '-j4',
@@ -84,12 +89,14 @@ def main():
   possible_model_file_locations = [
     '/mnt/scratch/llm-models/google-gemma/7b-it-sfp/7b-it-sfp.sbs',
     '/llm-models/google-gemma/7b-it-sfp/7b-it-sfp.sbs',
+    r'S:\Users\jmcateer\ToolResources\gemma-gemmacpp-7b-it-sfp-v3\7b-it-sfp.sbs',
     os.environ.get('GEMMA_MODEL_SBS_FILE', '')
   ]
 
   possible_tokenizer_file_locations = [
     '/mnt/scratch/llm-models/google-gemma/7b-it-sfp/tokenizer.spm',
     '/llm-models/google-gemma/7b-it-sfp/tokenizer.spm',
+    r'S:\Users\jmcateer\ToolResources\gemma-gemmacpp-7b-it-sfp-v3\tokenizer.spm',
     os.environ.get('GEMMA_TOKENIZER_SPM_FILE', '')
   ]
 
