@@ -56,15 +56,20 @@ int main_tasker(int argc, char** argv) {
   std::string llm_resp;
 
   llm_resp = prompt_llm_and_return_value_interactive(
-    "My name is "+username+". Your name is Mirror. Ask me what I want to accomplish."
+    "My name is "+username+". Your name is Mirror. Say hello to me and ask what I want to accomplish."
   );
 
   std::string user_goal_description = prompt_user();
+  if ( !( str_ends_in(user_goal_description, '.') || str_ends_in(user_goal_description, '?') || str_ends_in(user_goal_description, '!') ) ) {
+    user_goal_description += ".";
+  }
 
   // Now we internally use the LLM to imagine 3 sub-steps to that.
   std::string llm_idea_subgoals = prompt_llm_and_return_value_silent(
     user_goal_description+"\nIdentify three steps to accomplish this."
   );
+
+  std::cout << "[ DEBUG ] llm_idea_subgoals = " << llm_idea_subgoals << std::endl;
 
   // Interactively imagine more!
   llm_resp = prompt_llm_and_return_value_interactive(
