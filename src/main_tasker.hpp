@@ -74,18 +74,22 @@ int main_tasker(int argc, char** argv) {
   std::cout << "[ /DEBUG ] " << std::endl;
 
   // Interactively imagine more!
+  std::cout << "============= Step 1 =============" << std::endl;
   std::string howto_step1 = prompt_llm_and_return_value_interactive(
     llm_idea_subgoals+"\nTell me where and how I can accomplish step one."
   );
 
+  std::cout << "============= Step 2 =============" << std::endl;
   std::string howto_step2 = prompt_llm_and_return_value_interactive(
     llm_idea_subgoals+"\nTell me where and how I can accomplish step two."
   );
 
+  std::cout << "============= Step 3 =============" << std::endl;
   std::string howto_step3 = prompt_llm_and_return_value_interactive(
     llm_idea_subgoals+"\nTell me where and how I can accomplish step three."
   );
 
+  std::cout << "============= Fin =============" << std::endl;
   llm_resp = prompt_llm_and_return_value_interactive(
     username+" will be doing the following. "+llm_idea_subgoals+"\n"+
     "Energetically say goodbye to "+username+", briefly identify the first task to be done, and wish them success with their first task!"
