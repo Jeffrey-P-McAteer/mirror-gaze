@@ -42,7 +42,8 @@ int main_tasker(int argc, char** argv) {
 
   // Default is 0, but 1 means the LLM will keep state data between prompts.
   args.push_back((char*)"--multiturn");
-  args.push_back((char*)"1");
+  //args.push_back((char*)"1");
+  args.push_back((char*)"0");
 
   // Temperature: Controls randomness, higher values increase diversity.
   args.push_back((char*)"--temperature");
@@ -56,7 +57,7 @@ int main_tasker(int argc, char** argv) {
   std::string llm_resp;
 
   llm_resp = prompt_llm_and_return_value_interactive(
-    "My name is "+username+". Your name is Mirror. Say hello to me and ask what I want to accomplish."
+    "My name is "+username+". Your name is Mirror. Briefly greet me and ask what I want to accomplish."
   );
 
   std::string user_goal_description = prompt_user();
@@ -70,22 +71,24 @@ int main_tasker(int argc, char** argv) {
   );
 
   std::cout << "[ DEBUG ] llm_idea_subgoals = " << llm_idea_subgoals << std::endl;
+  std::cout << "[ /DEBUG ] " << std::endl;
 
   // Interactively imagine more!
-  llm_resp = prompt_llm_and_return_value_interactive(
+  std::string howto_step1 = prompt_llm_and_return_value_interactive(
     llm_idea_subgoals+"\nTell me where and how I can accomplish step one."
   );
 
-  llm_resp = prompt_llm_and_return_value_interactive(
+  std::string howto_step2 = prompt_llm_and_return_value_interactive(
     llm_idea_subgoals+"\nTell me where and how I can accomplish step two."
   );
 
-  llm_resp = prompt_llm_and_return_value_interactive(
+  std::string howto_step3 = prompt_llm_and_return_value_interactive(
     llm_idea_subgoals+"\nTell me where and how I can accomplish step three."
   );
 
   llm_resp = prompt_llm_and_return_value_interactive(
-    "Energetically say goodbye to "+username+" and wish them success!"
+    username+" will be doing the following. "+llm_idea_subgoals+"\n"+
+    "Energetically say goodbye to "+username+", briefly identify the first task to be done, and wish them success with their first task!"
   );
 
   exit_requested = true;
