@@ -4,6 +4,21 @@ import sys
 import subprocess
 import shutil
 
+py_site_pkgs = os.path.join(os.path.dirname(__file__), 'py-site-packages')
+os.makedirs(py_site_pkgs, exist_ok=True)
+sys.path.append(py_site_pkgs)
+
+try:
+  import psutil
+except:
+  import pip
+  print(f'Installing psutil into {py_site_pkgs}')
+  pip.main([
+    'install', f'--target={py_site_pkgs}', 'psutil'
+  ])
+  import psutil
+
+
 def replace_matching_line(file_path, is_match_lambda, replacement_str):
   with open(file_path, 'r') as fd:
     file_contents = fd.read()
@@ -127,10 +142,24 @@ def main():
         break
 
     # systemd-run handles making sure this process never gets > 10gb of main system ram, while allowing it to swap like crazy instead of crashing.
-    cmd = [
-      'systemd-run', '--scope', '-p', 'MemoryHigh=10G', '-p', 'MemorySwapMax=999G', '--user',
-      mirror_gaze_exe
-    ]
+    if not (shutil.which('systemd-run') is None):
+      ram_size_bytes = psutil.virtual_memory().total
+      ram_size_gb = round(ram_size_bytes / (1024 * 1024 * 1024), 2)
+      if ram_size_gb < 24:
+        # Limit model to 75% of free ram so we don't bring the system to a stuttery mess
+        memory_high = int(ram_size_gb * 0.74)
+        cmd = [
+          'systemd-run', '--scope', '-p', f'MemoryHigh={memory_high}G', '-p', 'MemorySwapMax=999G', '--user',
+          mirror_gaze_exe
+        ]
+      else:
+        # We have plenty of ram to run the model!
+        cmd = [ mirror_gaze_exe ]
+    else:
+      # We can't limit the process anyway, so we won't.
+      cmd = [ mirror_gaze_exe ]
+
+
     if sys_argv_idx_of_dash >= 0:
       cmd += sys.argv[sys_argv_idx_of_dash+1:]
 
