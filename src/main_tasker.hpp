@@ -60,7 +60,15 @@ int main_tasker(int argc, char** argv) {
     "My name is "+username+". Your name is Mirror. Briefly greet me and ask what I want to accomplish."
   );
 
-  std::string user_goal_description = prompt_user();
+  std::string user_goal_description;
+
+  if (argc > 2) {
+    user_goal_description = argv[2];
+  }
+  else {
+   user_goal_description = prompt_user();
+  }
+
   if ( !( str_ends_in(user_goal_description, '.') || str_ends_in(user_goal_description, '?') || str_ends_in(user_goal_description, '!') ) ) {
     user_goal_description += ".";
   }
