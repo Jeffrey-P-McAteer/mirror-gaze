@@ -117,9 +117,17 @@ def main():
     subproc_env['GEMMA_MODEL_SBS_FILE'] = model_file;
     subproc_env['GEMMA_TOKENIZER_SPM_FILE'] = tokenizer_file;
 
-    subprocess.run([
-      mirror_gaze_exe
-    ], env=subproc_env)
+    sys_argv_idx_of_dash = -1
+    for i,arg_val in enumerate(sys.argv):
+      if arg_val == '--':
+        sys_argv_idx_of_dash = i
+        break
+
+    cmd = [ mirror_gaze_exe ]
+    if sys_argv_idx_of_dash >= 0:
+      cmd += sys.argv[sys_argv_idx_of_dash+1:]
+    print(f'> {" ".join(cmd)}')
+    subprocess.run(cmd, env=subproc_env)
 
 
 
