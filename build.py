@@ -114,8 +114,11 @@ def main():
     print('= = = = = = = = = = = = = = = = = = = = = = = = = = =')
 
     subproc_env = dict(os.environ)
-    subproc_env['GEMMA_MODEL_SBS_FILE'] = model_file;
-    subproc_env['GEMMA_TOKENIZER_SPM_FILE'] = tokenizer_file;
+    subproc_env['GEMMA_MODEL_SBS_FILE'] = model_file
+    subproc_env['GEMMA_TOKENIZER_SPM_FILE'] = tokenizer_file
+
+    print(f'GEMMA_MODEL_SBS_FILE={model_file}')
+    print(f'GEMMA_TOKENIZER_SPM_FILE={tokenizer_file}')
 
     sys_argv_idx_of_dash = -1
     for i,arg_val in enumerate(sys.argv):
@@ -126,6 +129,7 @@ def main():
     cmd = [ mirror_gaze_exe ]
     if sys_argv_idx_of_dash >= 0:
       cmd += sys.argv[sys_argv_idx_of_dash+1:]
+
     print(f'> {" ".join(cmd)}')
     subprocess.run(cmd, env=subproc_env)
 
