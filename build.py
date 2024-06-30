@@ -126,12 +126,19 @@ def main():
         sys_argv_idx_of_dash = i
         break
 
-    cmd = [ mirror_gaze_exe ]
+    # systemd-run handles making sure this process never gets > 10gb of main system ram, while allowing it to swap like crazy instead of crashing.
+    cmd = [
+      'systemd-run', '--scope', '-p', 'MemoryHigh=10G', '-p', 'MemorySwapMax=999G', '--user',
+      mirror_gaze_exe
+    ]
     if sys_argv_idx_of_dash >= 0:
       cmd += sys.argv[sys_argv_idx_of_dash+1:]
 
     print(f'> {" ".join(cmd)}')
-    subprocess.run(cmd, env=subproc_env)
+    subprocess.run(cmd,
+      env=subproc_env,
+      check=True
+    )
 
 
 

@@ -517,6 +517,7 @@ bool argv_contains(int argc, char** argv, const char* value) {
 }
 
 #include "main_therapist_twoway.hpp"
+#include "main_tasker.hpp"
 
 int main(int argc, char** argv) {
   if (argv_contains(argc, argv, "therapist")) {
@@ -525,7 +526,7 @@ int main(int argc, char** argv) {
   }
   else if (argv_contains(argc, argv, "tasker")) {
     std::cout << "Running 'tasker'" << std::endl;
-    return main_therapist_twoway(argc, argv); // todo
+    return main_tasker(argc, argv);
   }
   else {
     std::cout << "Unknown sub-program to launch! Expected one of: therapist, tasker, " << std::endl;
