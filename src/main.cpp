@@ -507,7 +507,7 @@ bool str_contains(std::string& s, char c) {
   return false;
 }
 
-bool argv_contains(int argc, char** argv, char* value) {
+bool argv_contains(int argc, char** argv, const char* value) {
   for (int i=0; i<argc; i+=1) {
     if (strcmp(argv[i], value) == 0) {
       return true;
