@@ -149,7 +149,10 @@ def main():
         # Limit model to 75% of free ram so we don't bring the system to a stuttery mess
         memory_high = int(ram_size_gb * 0.74)
         cmd = [
-          'systemd-run', '--scope', '-p', f'MemoryHigh={memory_high}G', '-p', 'MemorySwapMax=999G', '--user',
+          'systemd-run', '--scope',
+            '-p', f'MemoryHigh={memory_high}G', '-p', 'MemorySwapMax=999G',
+            '-p', 'Nice=18',
+          '--user',
           mirror_gaze_exe
         ]
       else:
