@@ -78,8 +78,10 @@ int main_tasker(int argc, char** argv) {
     user_goal_description+"\nIdentify three steps to accomplish this."
   );
 
-  std::cout << "[ DEBUG ] llm_idea_subgoals = " << llm_idea_subgoals << std::endl;
-  std::cout << "[ /DEBUG ] " << std::endl;
+  if (const char* env_p = std::getenv("PRINT_LLM_SUBGOALS")) {
+    std::cout << "[ DEBUG ] llm_idea_subgoals = " << llm_idea_subgoals << std::endl;
+    std::cout << "[ /DEBUG ] " << std::endl;
+  }
 
   // Interactively imagine more!
   std::cout << "============= Step 1 =============" << std::endl;
