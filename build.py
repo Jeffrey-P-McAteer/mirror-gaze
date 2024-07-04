@@ -97,15 +97,15 @@ def main():
   ])
 
   possible_model_file_locations = [
+    os.environ.get('GEMMA_MODEL_SBS_FILE', ''),
     '/mnt/scratch/llm-models/google-gemma/7b-it-sfp/7b-it-sfp.sbs',
     '/llm-models/google-gemma/7b-it-sfp/7b-it-sfp.sbs',
-    os.environ.get('GEMMA_MODEL_SBS_FILE', '')
   ]
 
   possible_tokenizer_file_locations = [
+    os.environ.get('GEMMA_TOKENIZER_SPM_FILE', ''),
     '/mnt/scratch/llm-models/google-gemma/7b-it-sfp/tokenizer.spm',
     '/llm-models/google-gemma/7b-it-sfp/tokenizer.spm',
-    os.environ.get('GEMMA_TOKENIZER_SPM_FILE', '')
   ]
 
   if 'run' in sys.argv:
@@ -151,7 +151,7 @@ def main():
         cmd = [
           'systemd-run', '--scope',
             '-p', f'MemoryHigh={memory_high}G', '-p', 'MemorySwapMax=999G',
-            '-p', 'Nice=18',
+            '--nice=18',
           '--user',
           mirror_gaze_exe
         ]

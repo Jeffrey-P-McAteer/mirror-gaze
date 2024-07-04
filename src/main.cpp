@@ -423,6 +423,14 @@ std::string prompt_llm_and_return_value(std::string prompt_txt, bool print_token
         }
       }
 
+      // Also trim leading + trailing "**" tokens
+      auto next_star_pos = val.find("**");
+      while (next_star_pos != std::string::npos) {
+        val.erase(next_star_pos, 2);
+        next_star_pos = val.find("**");
+      }
+
+
       ss << val;
 
       if (print_tokens_to_screen) {
@@ -506,6 +514,7 @@ bool str_contains(std::string& s, char c) {
   }
   return false;
 }
+
 
 bool argv_contains(int argc, char** argv, const char* value) {
   for (int i=0; i<argc; i+=1) {
