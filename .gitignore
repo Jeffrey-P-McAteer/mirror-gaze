@@ -3,4 +3,8 @@ bin
 out
 bin_3rdparty
 build_3rdparty
+*site-packages
+*site-packages/*
 
+
+.vs

@@ -4,6 +4,21 @@ import sys
 import subprocess
 import shutil
 
+py_site_pkgs = os.path.join(os.path.dirname(__file__), 'py-site-packages')
+os.makedirs(py_site_pkgs, exist_ok=True)
+sys.path.append(py_site_pkgs)
+
+try:
+  import psutil
+except:
+  import pip
+  print(f'Installing psutil into {py_site_pkgs}')
+  pip.main([
+    'install', f'--target={py_site_pkgs}', 'psutil'
+  ])
+  import psutil
+
+
 def replace_matching_line(file_path, is_match_lambda, replacement_str):
   with open(file_path, 'r') as fd:
     file_contents = fd.read()
@@ -64,7 +79,8 @@ def main():
   if shutil.which('make') is None:
     # Windows-ism
     subprocess.run([
-      'nmake',
+      #'nmake',
+       'msbuild', 'gemma.vcxproj'
     ], cwd=os.path.join(gemma_repo_root, 'build'), check=True)
   else:
     subprocess.run([
@@ -93,6 +109,7 @@ def main():
   ])
 
   possible_model_file_locations = [
+    os.environ.get('GEMMA_MODEL_SBS_FILE', ''),
     '/mnt/scratch/llm-models/google-gemma/7b-it-sfp/7b-it-sfp.sbs',
     '/llm-models/google-gemma/7b-it-sfp/7b-it-sfp.sbs',
     r'S:\Users\jmcateer\ToolResources\gemma-gemmacpp-7b-it-sfp-v3\7b-it-sfp.sbs',
@@ -100,6 +117,7 @@ def main():
   ]
 
   possible_tokenizer_file_locations = [
+    os.environ.get('GEMMA_TOKENIZER_SPM_FILE', ''),
     '/mnt/scratch/llm-models/google-gemma/7b-it-sfp/tokenizer.spm',
     '/llm-models/google-gemma/7b-it-sfp/tokenizer.spm',
     r'S:\Users\jmcateer\ToolResources\gemma-gemmacpp-7b-it-sfp-v3\tokenizer.spm',
@@ -127,12 +145,48 @@ def main():
     print('= = = = = = = = = = = = = = = = = = = = = = = = = = =')
 
     subproc_env = dict(os.environ)
-    subproc_env['GEMMA_MODEL_SBS_FILE'] = model_file;
-    subproc_env['GEMMA_TOKENIZER_SPM_FILE'] = tokenizer_file;
+    subproc_env['GEMMA_MODEL_SBS_FILE'] = model_file
+    subproc_env['GEMMA_TOKENIZER_SPM_FILE'] = tokenizer_file
 
-    subprocess.run([
-      mirror_gaze_exe
-    ], env=subproc_env)
+    print(f'GEMMA_MODEL_SBS_FILE={model_file}')
+    print(f'GEMMA_TOKENIZER_SPM_FILE={tokenizer_file}')
+
+    sys_argv_idx_of_dash = -1
+    for i,arg_val in enumerate(sys.argv):
+      if arg_val == '--':
+        sys_argv_idx_of_dash = i
+        break
+
+    # systemd-run handles making sure this process never gets > 10gb of main system ram, while allowing it to swap like crazy instead of crashing.
+    if not (shutil.which('systemd-run') is None):
+      ram_size_bytes = psutil.virtual_memory().total
+      ram_size_gb = round(ram_size_bytes / (1024 * 1024 * 1024), 2)
+      if ram_size_gb < 24:
+        # Limit model to 75% of free ram so we don't bring the system to a stuttery mess
+        memory_high = int(ram_size_gb * 0.74)
+        cmd = [
+          'systemd-run', '--scope',
+            '-p', f'MemoryHigh={memory_high}G', '-p', 'MemorySwapMax=999G',
+            '--nice=18',
+          '--user',
+          mirror_gaze_exe
+        ]
+      else:
+        # We have plenty of ram to run the model!
+        cmd = [ mirror_gaze_exe ]
+    else:
+      # We can't limit the process anyway, so we won't.
+      cmd = [ mirror_gaze_exe ]
+
+
+    if sys_argv_idx_of_dash >= 0:
+      cmd += sys.argv[sys_argv_idx_of_dash+1:]
+
+    print(f'> {" ".join(cmd)}')
+    subprocess.run(cmd,
+      env=subproc_env,
+      check=True
+    )
 
 
 
